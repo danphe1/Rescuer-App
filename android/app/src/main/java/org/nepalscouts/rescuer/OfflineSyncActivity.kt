@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import kotlinx.coroutines.launch
 import org.nepalscouts.rescuer.data.RescueDatabase
 import org.nepalscouts.rescuer.security.SecureSessionStore
+import org.nepalscouts.rescuer.sync.ActionSyncWorker
 import org.nepalscouts.rescuer.sync.LocationSyncWorker
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -35,25 +36,39 @@ class OfflineSyncActivity : AppCompatActivity() {
 
     private fun refresh() {
         lifecycleScope.launch {
-            val dao = RescueDatabase.get(this@OfflineSyncActivity).locationDao()
-            val pending = dao.pendingCount()
-            val failed = dao.failedCount()
-            val latest = dao.latestCapturedAt()
+            val db = RescueDatabase.get(this@OfflineSyncActivity)
+            val gpsDao = db.locationDao()
+            val actionDao = db.offlineActionDao()
+            val pendingGps = gpsDao.pendingCount()
+            val failedGps = gpsDao.failedCount()
+            val latest = gpsDao.latestCapturedAt()
+            val pendingActions = actionDao.pendingCount()
+            val failedActions = actionDao.failedCount()
             root.removeAllViews()
             heading("Offline Sync")
             line("GPS capture", if (session.trackingActive()) "ACTIVE" else "STOPPED", if (session.trackingActive()) Color.rgb(5, 110, 68) else Color.DKGRAY)
-            line("Queued GPS points", pending.toString(), if (pending > 0) Color.rgb(194, 120, 0) else Color.rgb(5, 110, 68))
-            line("Retry-needed points", failed.toString(), if (failed > 0) Color.rgb(180, 35, 35) else Color.rgb(5, 110, 68))
+            line("Queued GPS points", pendingGps.toString(), if (pendingGps > 0) Color.rgb(194, 120, 0) else Color.rgb(5, 110, 68))
+            line("GPS retry-needed", failedGps.toString(), if (failedGps > 0) Color.rgb(180, 35, 35) else Color.rgb(5, 110, 68))
+            line("Queued Check-Ins / Messages", pendingActions.toString(), if (pendingActions > 0) Color.rgb(194, 120, 0) else Color.rgb(5, 110, 68))
+            line("Action retry-needed", failedActions.toString(), if (failedActions > 0) Color.rgb(180, 35, 35) else Color.rgb(5, 110, 68))
             line("Low Data Mode", if (session.lowData()) "ON" else "OFF", Color.rgb(18, 89, 160))
             line("Last local GPS", latest?.let { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(it)) } ?: "No point captured yet", Color.DKGRAY)
-            info("GPS is stored on this device before upload. A queued point is not the same as tracking lost. Original capture time is preserved when the point syncs later.")
+            info("GPS, Check-Ins and Command messages are stored on this device before upload. Queued data is not the same as tracking lost. Original capture time is preserved when data syncs later.")
             val sync = Button(this@OfflineSyncActivity).apply {
                 text = "SYNC NOW"
                 setTextColor(Color.WHITE)
                 setBackgroundColor(Color.rgb(5, 93, 55))
                 setOnClickListener {
-                    val request = OneTimeWorkRequestBuilder<LocationSyncWorker>().build()
-                    WorkManager.getInstance(this@OfflineSyncActivity).enqueueUniqueWork("manual-location-sync", ExistingWorkPolicy.REPLACE, request)
+                    WorkManager.getInstance(this@OfflineSyncActivity).enqueueUniqueWork(
+                        "manual-location-sync",
+                        ExistingWorkPolicy.REPLACE,
+                        OneTimeWorkRequestBuilder<LocationSyncWorker>().build()
+                    )
+                    WorkManager.getInstance(this@OfflineSyncActivity).enqueueUniqueWork(
+                        "manual-action-sync",
+                        ExistingWorkPolicy.REPLACE,
+                        OneTimeWorkRequestBuilder<ActionSyncWorker>().build()
+                    )
                     postDelayed({ refresh() }, 1200)
                 }
             }
