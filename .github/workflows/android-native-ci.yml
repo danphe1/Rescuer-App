@@ -21,5 +21,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
-      - name: Compile and lint native app
-        run: gradle -p android :app:assembleDebug :app:lintDebug --stacktrace
+      - name: Compile, test, lint and build Play bundle
+        run: gradle -p android :app:assembleDebug :app:testDebugUnitTest :app:lintDebug :app:bundleRelease --stacktrace
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rescuer-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: rescuer-release-aab-unsigned
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
