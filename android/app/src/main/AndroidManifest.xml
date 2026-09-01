@@ -15,6 +15,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Rescuer">
 
+        <activity android:name=".CommandInboxActivity" android:exported="false" />
         <activity android:name=".EvidenceActivity" android:exported="false" />
         <activity android:name=".ActivityTimelineActivity" android:exported="false" />
         <activity android:name=".MissionActivity" android:exported="false" />
