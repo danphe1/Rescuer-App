@@ -6,10 +6,13 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.os.BatteryManager
+import android.os.Build
 import android.os.IBinder
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
@@ -71,7 +74,8 @@ class RescueLocationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        startForeground(NOTIFICATION_ID, notification("Starting GPS…"))
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification("Starting GPS…"), type)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -91,10 +95,7 @@ class RescueLocationService : Service() {
         }
         session.setTrackingActive(true)
         val lowData = session.lowData()
-        val request = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            if (lowData) 30_000L else 15_000L
-        )
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, if (lowData) 30_000L else 15_000L)
             .setMinUpdateIntervalMillis(if (lowData) 15_000L else 8_000L)
             .setMaxUpdateDelayMillis(if (lowData) 120_000L else 30_000L)
             .build()
@@ -107,7 +108,7 @@ class RescueLocationService : Service() {
         fused.removeLocationUpdates(callback)
         session.setTrackingActive(false)
         scheduleSync()
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
@@ -118,10 +119,8 @@ class RescueLocationService : Service() {
     }
 
     private fun notification(message: String): Notification {
-        val openIntent = Intent(this, MainActivity::class.java)
-        val openPending = PendingIntent.getActivity(this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val stopIntent = Intent(this, RescueLocationService::class.java).setAction(ACTION_STOP)
-        val stopPending = PendingIntent.getService(this, 1, stopIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val openPending = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val stopPending = PendingIntent.getService(this, 1, Intent(this, RescueLocationService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentTitle("Nepal Scouts Rescue — GPS active")
@@ -137,9 +136,8 @@ class RescueLocationService : Service() {
     private fun updateNotification(queued: Int, accuracy: Float?) {
         val mode = if (session.lowData()) "Low data" else "Standard"
         val accuracyText = accuracy?.let { " · ±${it.toInt()}m" } ?: ""
-        val text = "$mode · $queued queued$accuracyText"
-        val manager = ContextCompat.getSystemService(this, android.app.NotificationManager::class.java)
-        manager?.notify(NOTIFICATION_ID, notification(text))
+        ContextCompat.getSystemService(this, android.app.NotificationManager::class.java)
+            ?.notify(NOTIFICATION_ID, notification("$mode · $queued queued$accuracyText"))
     }
 
     override fun onDestroy() {
