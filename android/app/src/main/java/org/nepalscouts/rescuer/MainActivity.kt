@@ -97,6 +97,7 @@ class MainActivity : AppCompatActivity() {
         val safetyColor = if (s.sosStatus == "raised" || s.safetyStatus == "sos") Color.rgb(190, 32, 38) else Color.rgb(5, 110, 68)
         statusCard("SAFETY", if (s.sosStatus == "raised") "SOS RAISED" else s.safetyStatus.replace('_', ' ').uppercase(), safetyColor)
         statusCard("GPS", if (session.trackingActive()) "TRACKING ACTIVE" else "TRACKING STOPPED", if (session.trackingActive()) Color.rgb(5, 110, 68) else Color.DKGRAY)
+        if (s.messages.isNotEmpty()) statusCard("COMMAND", "${s.messages.size} UNREAD", Color.rgb(190, 32, 38))
 
         if (s.approvalStatus != "approved") {
             text("Device status: ${s.approvalStatus.uppercase()}. Rescue Command approval is required before field actions.", 15f, Color.rgb(180, 85, 0))
@@ -114,6 +115,7 @@ class MainActivity : AppCompatActivity() {
         primaryButton(actions, "MESSAGE", Color.rgb(18, 89, 160), true) { showMessage() }
         sosHoldButton(actions)
 
+        button("COMMAND INBOX", if (s.messages.isNotEmpty()) Color.rgb(190, 32, 38) else Color.rgb(18, 89, 160)) { startActivity(Intent(this, CommandInboxActivity::class.java)) }
         button("MISSION DETAILS", Color.rgb(18, 89, 160)) { startActivity(Intent(this, MissionActivity::class.java)) }
         button("ACTIVITY TIMELINE", Color.rgb(18, 89, 160)) { startActivity(Intent(this, ActivityTimelineActivity::class.java)) }
         button("EVIDENCE PHOTOS", Color.rgb(18, 89, 160)) { startActivity(Intent(this, EvidenceActivity::class.java)) }
