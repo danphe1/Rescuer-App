@@ -116,6 +116,7 @@ class MainActivity : AppCompatActivity() {
 
         button("MISSION DETAILS", Color.rgb(18, 89, 160)) { startActivity(Intent(this, MissionActivity::class.java)) }
         button("ACTIVITY TIMELINE", Color.rgb(18, 89, 160)) { startActivity(Intent(this, ActivityTimelineActivity::class.java)) }
+        button("EVIDENCE PHOTOS", Color.rgb(18, 89, 160)) { startActivity(Intent(this, EvidenceActivity::class.java)) }
         button("OFFLINE SYNC / QUEUE", Color.rgb(75, 88, 100)) { startActivity(Intent(this, OfflineSyncActivity::class.java)) }
         if (s.operationalStatus == "on_mission") {
             button("I AM SAFE", Color.rgb(5, 110, 68)) { sendEvent("safe", "SAFE confirmed") }
