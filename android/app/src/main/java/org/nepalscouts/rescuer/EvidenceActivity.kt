@@ -14,10 +14,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import kotlinx.coroutines.launch
 import org.nepalscouts.rescuer.data.EvidenceItem
 import org.nepalscouts.rescuer.data.RescueDatabase
 import org.nepalscouts.rescuer.security.SecureSessionStore
+import org.nepalscouts.rescuer.sync.EvidenceSyncWorker
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -47,7 +52,8 @@ class EvidenceActivity : AppCompatActivity() {
                         accuracy = latest?.accuracy
                     )
                 )
-                render("Evidence saved locally. Upload remains pending until the production evidence endpoint is available.")
+                enqueueUpload()
+                render(if (session.lowData()) "Evidence saved locally. Upload is restricted to an unmetered network in Low Data Mode." else "Evidence saved locally and queued for confirmed upload.")
             }
         } else {
             file?.delete()
@@ -71,7 +77,7 @@ class EvidenceActivity : AppCompatActivity() {
             val items = RescueDatabase.get(this@EvidenceActivity).evidenceDao().recent(50)
             root.removeAllViews()
             heading("Evidence")
-            info("Photos are captured to app-controlled storage first. Low Data Mode never forces a photo upload. The app will not claim evidence is uploaded until the backend confirms it.")
+            info("Photos are captured to app-controlled storage first. Upload status changes to UPLOADED only after the rescue backend confirms receipt.")
             if (!message.isNullOrBlank()) info(message)
             arrayOf("incident", "victim_location", "damage", "supplies").forEach { category ->
                 root.addView(Button(this@EvidenceActivity).apply {
@@ -79,6 +85,10 @@ class EvidenceActivity : AppCompatActivity() {
                     setOnClickListener { startCapture(category) }
                 }, match(dp(58)))
             }
+            root.addView(Button(this@EvidenceActivity).apply {
+                text = "SYNC PENDING EVIDENCE"
+                setOnClickListener { enqueueUpload(); render("Evidence sync requested using the current data policy.") }
+            }, match(dp(58)))
             val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
             items.forEach { item ->
                 root.addView(TextView(this@EvidenceActivity).apply {
@@ -91,6 +101,14 @@ class EvidenceActivity : AppCompatActivity() {
             }
             root.addView(Button(this@EvidenceActivity).apply { text = "BACK"; setOnClickListener { finish() } }, match(dp(56)))
         }
+    }
+
+    private fun enqueueUpload() {
+        val network = if (session.lowData()) NetworkType.UNMETERED else NetworkType.CONNECTED
+        val request = OneTimeWorkRequestBuilder<EvidenceSyncWorker>()
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(network).build())
+            .build()
+        WorkManager.getInstance(this).enqueue(request)
     }
 
     private fun startCapture(category: String) {
