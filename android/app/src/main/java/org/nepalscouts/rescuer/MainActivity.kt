@@ -24,9 +24,11 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import org.nepalscouts.rescuer.network.RescueApi
 import org.nepalscouts.rescuer.network.RescueStatus
 import org.nepalscouts.rescuer.security.SecureSessionStore
+import org.nepalscouts.rescuer.sync.OfflineActionQueue
 import org.nepalscouts.rescuer.tracking.TrackingController
 
 class MainActivity : AppCompatActivity() {
@@ -112,7 +114,7 @@ class MainActivity : AppCompatActivity() {
         primaryButton(actions, "MESSAGE", Color.rgb(18, 89, 160), true) { showMessage() }
         sosHoldButton(actions)
 
-        button("OFFLINE SYNC / GPS QUEUE", Color.rgb(75, 88, 100)) { startActivity(Intent(this, OfflineSyncActivity::class.java)) }
+        button("OFFLINE SYNC / QUEUE", Color.rgb(75, 88, 100)) { startActivity(Intent(this, OfflineSyncActivity::class.java)) }
         if (s.operationalStatus == "on_mission") {
             button("I AM SAFE", Color.rgb(5, 110, 68)) { sendEvent("safe", "SAFE confirmed") }
             button("RETURNING", Color.rgb(194, 120, 0)) { sendEvent("returning", "Returning") }
@@ -147,17 +149,33 @@ class MainActivity : AppCompatActivity() {
     private fun showCheckIn() {
         val choices = arrayOf("Reached location", "Need medical", "Need transport", "Need food/water", "Area searched", "Victim found")
         AlertDialog.Builder(this).setTitle("Quick Check-In").setItems(choices) { _, which ->
-            val token = session.deviceToken() ?: return@setItems
-            lifecycleScope.launch { runCatching { api.checkIn(token, choices[which].lowercase().replace(' ', '_').replace('/', '_')) }.onSuccess { toast("Check-in sent") }.onFailure { toast(it.message ?: "Check-in failed") } }
+            if (session.deviceToken() == null) return@setItems
+            val type = choices[which].lowercase().replace(' ', '_').replace('/', '_')
+            lifecycleScope.launch {
+                val payload = JSONObject()
+                    .put("action", "checkin")
+                    .put("type", type)
+                    .put("captured_at", System.currentTimeMillis())
+                OfflineActionQueue.enqueue(this@MainActivity, "checkin", payload)
+                toast("Check-in saved on device and queued for sync")
+            }
         }.setNegativeButton("Cancel", null).show()
     }
 
     private fun showMessage() {
         val input = EditText(this).apply { hint = "Message to Command"; minLines = 3 }
         AlertDialog.Builder(this).setTitle("Message Command").setView(input).setPositiveButton("Send") { _, _ ->
-            val message = input.text.toString().trim(); val token = session.deviceToken() ?: return@setPositiveButton
-            if (message.isBlank()) return@setPositiveButton
-            lifecycleScope.launch { runCatching { api.sendMessage(token, message) }.onSuccess { toast("Message sent") }.onFailure { toast(it.message ?: "Message failed") } }
+            val message = input.text.toString().trim()
+            if (message.isBlank() || session.deviceToken() == null) return@setPositiveButton
+            lifecycleScope.launch {
+                val payload = JSONObject()
+                    .put("action", "send_message")
+                    .put("message", message)
+                    .put("priority", "normal")
+                    .put("captured_at", System.currentTimeMillis())
+                OfflineActionQueue.enqueue(this@MainActivity, "message", payload)
+                toast("Message saved on device and queued for sync")
+            }
         }.setNegativeButton("Cancel", null).show()
     }
 
