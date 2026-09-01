@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -39,6 +39,7 @@ import type {
 import { mission } from "./data/sample";
 import { getQueue, putQueue, removeQueue } from "./data/queueRepository";
 import { upload } from "./data/api";
+import { synchronizeQueue } from "./data/syncService";
 type Screen =
   | "home"
   | "mission"
@@ -98,6 +99,8 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
   const [state, setState] = useState(seed);
   const [toast, setToast] = useState("");
+  const syncing = useRef(false);
+  const autoSyncKey = useRef("");
   useEffect(() => {
     getQueue()
       .then((q) => setState((s) => ({ ...s, queue: q })))
@@ -161,8 +164,8 @@ export default function App() {
         ...state.lastPosition,
       },
       state.online
-        ? "SAFE recorded — syncing"
-        : "SAFE recorded — queued offline",
+        ? "SAFE recorded â€” syncing"
+        : "SAFE recorded â€” queued offline",
     );
   }
   async function sos() {
@@ -182,44 +185,43 @@ export default function App() {
         network: state.online ? "online" : "offline",
       },
       state.online
-        ? "SOS raised — awaiting Command"
-        : "SOS saved locally — retrying delivery",
+        ? "SOS raised â€” awaiting Command"
+        : "SOS saved locally â€” retrying delivery",
     );
     setScreen("sos");
   }
-  async function sync() {
+  const sync = useCallback(async () => {
     if (!state.online) {
       notify("No network. Items remain safely queued.");
       return;
     }
-    for (const item of state.queue) {
-      try {
-        await upload(item);
-        await removeQueue(item.id);
-        setState((s) => ({
-          ...s,
-          queue: s.queue.filter((q) => q.id !== item.id),
-        }));
-      } catch (e) {
-        setState((s) => ({
-          ...s,
-          queue: s.queue.map((q) =>
-            q.id === item.id
-              ? {
-                  ...q,
-                  syncState: "FAILED",
-                  attempts: q.attempts + 1,
-                  lastError: e instanceof Error ? e.message : "Upload failed",
-                }
-              : q,
-          ),
-        }));
-        notify(e instanceof Error ? e.message : "Sync failed");
-        return;
+    if (syncing.current || state.queue.length === 0) return;
+    syncing.current = true;
+    try {
+      const result = await synchronizeQueue(state.queue, {
+        upload,
+        save: putQueue,
+        remove: removeQueue,
+      });
+      setState((s) => ({ ...s, queue: result.remaining }));
+      if (result.remaining.length > 0) {
+        notify(result.remaining[0].lastError ?? "Sync failed");
+      } else {
+        notify("Offline queue synchronized");
       }
+    } finally {
+      syncing.current = false;
     }
-    notify("Offline queue synchronized");
-  }
+  }, [state.online, state.queue]);
+  useEffect(() => {
+    const key = state.queue.map((record) => record.id).join(",");
+    if (!state.online) {
+      autoSyncKey.current = "";
+    } else if (key && key !== autoSyncKey.current) {
+      autoSyncKey.current = key;
+      void sync();
+    }
+  }, [state.online, state.queue, sync]);
   const content = (() => {
     switch (screen) {
       case "mission":
@@ -254,8 +256,8 @@ export default function App() {
                   ...state.lastPosition,
                 },
                 state.online
-                  ? "Evidence saved — syncing"
-                  : "Evidence saved — queued offline",
+                  ? "Evidence saved â€” syncing"
+                  : "Evidence saved â€” queued offline",
               );
             }}
             onSubmit={async (type, note) => {
@@ -270,8 +272,8 @@ export default function App() {
                   ...state.lastPosition,
                 },
                 state.online
-                  ? "Check-in saved — syncing"
-                  : "Check-in saved — queued offline",
+                  ? "Check-in saved â€” syncing"
+                  : "Check-in saved â€” queued offline",
               );
               setScreen("home");
             }}
@@ -333,10 +335,10 @@ export default function App() {
     <div className="app">
       <header>
         <div className="brand">
-          <div className="crest">⚜</div>
+          <div className="crest">âšœ</div>
           <div>
             <b>Nepal Scouts</b>
-            <span>RESCUE • FIELD UNIT</span>
+            <span>RESCUE â€¢ FIELD UNIT</span>
           </div>
         </div>
         <button
@@ -345,7 +347,7 @@ export default function App() {
         >
           {state.online ? <Wifi size={15} /> : <WifiOff size={15} />}{" "}
           {state.online ? "Online" : "Offline"}
-          {state.queue.length > 0 && ` · ${state.queue.length} queued`}
+          {state.queue.length > 0 && ` Â· ${state.queue.length} queued`}
         </button>
       </header>
       <main>{content}</main>
@@ -443,7 +445,7 @@ function Home({
         <div>
           <span>FIELD RESCUER</span>
           <h1>Maya Gurung</h1>
-          <p>Bagmati Alpha · Scout NS-0427</p>
+          <p>Bagmati Alpha Â· Scout NS-0427</p>
         </div>
         <button aria-label="Open profile" onClick={() => go("profile")}>
           <ChevronRight />
@@ -474,7 +476,7 @@ function Home({
           <span>
             {health === "OFFLINE_QUEUED"
               ? "GPS is capturing locally"
-              : `Last GPS ${Math.round((Date.now() - new Date(state.lastPosition!.capturedAt).getTime()) / 1000)} sec ago · ±${state.lastPosition?.accuracy}m`}
+              : `Last GPS ${Math.round((Date.now() - new Date(state.lastPosition!.capturedAt).getTime()) / 1000)} sec ago Â· Â±${state.lastPosition?.accuracy}m`}
           </span>
         </div>
         <BatteryMedium />
@@ -483,7 +485,7 @@ function Home({
       </section>
       <section className="mission-summary" onClick={() => go("mission")}>
         <div>
-          <span>CURRENT ASSIGNMENT · {mission.incidentId}</span>
+          <span>CURRENT ASSIGNMENT Â· {mission.incidentId}</span>
           <h2>{mission.incidentName}</h2>
           <p>
             <MapPin /> {mission.area}
@@ -568,7 +570,7 @@ function Mission({
         <Detail label="Operational status" value={labels[state]} />
         <Detail label="Team" value={mission.team} />
         <Detail label="Team leader" value={mission.leader} />
-        <Detail label="Team members" value={mission.members.join(" · ")} />
+        <Detail label="Team members" value={mission.members.join(" Â· ")} />
         <Detail label="Task" value={mission.task} />
         <Detail label="Meeting point" value={mission.meetingPoint} />
         <Detail label="Safe route" value={mission.safeRoute} />
@@ -579,7 +581,7 @@ function Mission({
         />
         <Detail
           label="Emergency contacts"
-          value={mission.contacts.join(" · ")}
+          value={mission.contacts.join(" Â· ")}
         />
       </section>
       <div className="stack-actions">
@@ -615,7 +617,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 }
 function MapScreen() {
   return (
-    <Page title="Operational Map" eyebrow="OSM · FIELD LAYERS">
+    <Page title="Operational Map" eyebrow="OSM Â· FIELD LAYERS">
       <OperationalMap />
       <div className="map-note">
         <Radio />
@@ -668,14 +670,14 @@ function CheckIn({
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Add details for Command…"
+          placeholder="Add details for Commandâ€¦"
         />
       </label>
       <div className="location-proof">
         <MapPin />
         <span>
           <b>27.71720, 85.32400</b>
-          <small>Accuracy ±8m · captured on submit</small>
+          <small>Accuracy Â±8m Â· captured on submit</small>
         </span>
       </div>
       <button className="primary full" onClick={() => onSubmit(type, note)}>
@@ -703,7 +705,7 @@ function CheckIn({
             onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file) return;
-              setEvidenceState("Saving evidence locally…");
+              setEvidenceState("Saving evidence locallyâ€¦");
               try {
                 await onEvidence(category, file);
                 setEvidenceState("Evidence saved to offline queue.");
@@ -742,7 +744,7 @@ function Messages({ notify }: { notify: (s: string) => void }) {
       {tab === "Command" && !ack && (
         <article className="urgent">
           <span>
-            <AlertTriangle /> URGENT · ACKNOWLEDGEMENT REQUIRED
+            <AlertTriangle /> URGENT Â· ACKNOWLEDGEMENT REQUIRED
           </span>
           <h3>River level rising near Sector C</h3>
           <p>
@@ -759,17 +761,17 @@ function Messages({ notify }: { notify: (s: string) => void }) {
         </article>
       )}
       <article className="message">
-        <b>{tab === "Command" ? "Rescue Command" : "Sita Rai · Team Leader"}</b>
+        <b>{tab === "Command" ? "Rescue Command" : "Sita Rai Â· Team Leader"}</b>
         <p>
           {tab === "Command"
             ? "Medical point moved to Shree Janata School."
             : "Meet at the eastern gate after area sweep."}
         </p>
-        <small>Delivered · 09:42</small>
+        <small>Delivered Â· 09:42</small>
       </article>
       <label className="field">
         New message
-        <textarea placeholder={`Message ${tab}…`} />
+        <textarea placeholder={`Message ${tab}â€¦`} />
       </label>
       <button
         className="primary full"
@@ -801,8 +803,8 @@ function Sos({
         </p>
         <b>
           {state.online
-            ? "Delivery attempted · awaiting acknowledgement"
-            : "Offline · SOS queued locally"}
+            ? "Delivery attempted Â· awaiting acknowledgement"
+            : "Offline Â· SOS queued locally"}
         </b>
       </section>
       <section className="detail-list">
@@ -810,7 +812,7 @@ function Sos({
           label="Operational state (unchanged)"
           value={labels[state.operational]}
         />
-        <Detail label="Position" value="27.71720, 85.32400 · ±8m" />
+        <Detail label="Position" value="27.71720, 85.32400 Â· Â±8m" />
         <Detail label="Battery" value={`${state.battery}%`} />
         <Detail label="Network" value={state.online ? "Online" : "Offline"} />
         <Detail
@@ -862,7 +864,7 @@ function Timeline({ state }: { state: AppState }) {
             </small>
             <h3>{e.eventType.replaceAll("_", " ")}</h3>
             <p>
-              {e.actorId === "command" ? "Command Center" : "Maya Gurung"} ·{" "}
+              {e.actorId === "command" ? "Command Center" : "Maya Gurung"} Â·{" "}
               {Object.keys(e.metadata).length
                 ? JSON.stringify(e.metadata)
                 : "Recorded with field context"}
@@ -879,7 +881,7 @@ function Profile() {
       <section className="profile-hero">
         <div className="avatar large">MG</div>
         <h2>Maya Gurung</h2>
-        <p>Scout ID NS-0427 · Bagmati Alpha</p>
+        <p>Scout ID NS-0427 Â· Bagmati Alpha</p>
         <span>
           <CheckCircle2 /> Device approved
         </span>
@@ -887,8 +889,8 @@ function Profile() {
       <section className="detail-list">
         <Detail label="Phone" value="980-000-0142" />
         <Detail label="Blood group" value="O+" />
-        <Detail label="Skills" value="First aid · Swift water · Radio" />
-        <Detail label="Emergency contact" value="Tara Gurung · 980-000-0143" />
+        <Detail label="Skills" value="First aid Â· Swift water Â· Radio" />
+        <Detail label="Emergency contact" value="Tara Gurung Â· 980-000-0143" />
         <Detail label="District deployed" value="Kathmandu" />
         <Detail label="Team" value="Bagmati Alpha" />
       </section>
@@ -924,8 +926,8 @@ function Tracking({
           value={
             state.operational === "ON_MISSION" ||
             state.operational === "RETURNING"
-              ? "ON — active mission"
-              : "OFF — mission not active"
+              ? "ON â€” active mission"
+              : "OFF â€” mission not active"
           }
         />
         <Detail label="GPS permission" value={state.trackingPermission} />
@@ -933,12 +935,12 @@ function Tracking({
           label="Current interval"
           value={
             state.operational === "ON_MISSION"
-              ? "15 seconds · active rescue"
-              : "2 minutes · standby"
+              ? "15 seconds Â· active rescue"
+              : "2 minutes Â· standby"
           }
         />
-        <Detail label="Last update" value="42 seconds ago · ±8m" />
-        <Detail label="Battery mode" value="Standard · 72%" />
+        <Detail label="Last update" value="42 seconds ago Â· Â±8m" />
+        <Detail label="Battery mode" value="Standard Â· 72%" />
         <Detail
           label="Offline GPS queue"
           value={`${state.queue.filter((q) => q.kind === "GPS").length} points`}
@@ -968,7 +970,7 @@ function Sync({ state, sync }: { state: AppState; sync: () => void }) {
       <section className={`connectivity ${state.online ? "ok" : "warn"}`}>
         {state.online ? <Cloud /> : <CloudOff />}
         <div>
-          <h2>{state.online ? "Online" : "Offline — capture continues"}</h2>
+          <h2>{state.online ? "Online" : "Offline â€” capture continues"}</h2>
           <p>
             {state.online
               ? "Queued records can synchronize."
@@ -1004,3 +1006,4 @@ function Sync({ state, sync }: { state: AppState; sync: () => void }) {
     </Page>
   );
 }
+
