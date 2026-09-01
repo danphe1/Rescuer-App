@@ -13,6 +13,9 @@ interface OfflineActionDao {
     @Query("SELECT * FROM offline_actions WHERE state = 'pending' OR (state = 'failed' AND attempts < 8) ORDER BY capturedAt ASC LIMIT :limit")
     suspend fun pending(limit: Int): List<OfflineAction>
 
+    @Query("SELECT * FROM offline_actions ORDER BY capturedAt DESC LIMIT :limit")
+    suspend fun recent(limit: Int): List<OfflineAction>
+
     @Query("UPDATE offline_actions SET state = 'synced', uploadedAt = :uploadedAt WHERE id = :id")
     suspend fun markSynced(id: String, uploadedAt: Long)
 
