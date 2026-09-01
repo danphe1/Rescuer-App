@@ -1,0 +1,1 @@
+export const policy={safeIntervalMs:8*60*60*1000,safeOverdueGraceMs:30*60*1000,tracking:{activeMs:15_000,standbyMs:120_000,healthyMaxMs:3*60*1000,delayedMaxMs:10*60*1000},sos:{holdMs:3_000,escalateMs:90_000}} as const

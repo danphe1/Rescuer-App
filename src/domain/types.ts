@@ -1,0 +1,11 @@
+export type OperationalState='AVAILABLE'|'ALERTED'|'EN_ROUTE'|'ON_MISSION'|'RETURNING'|'OFF_DUTY'
+export type SafetyState='SAFE_CONFIRMED'|'SAFE_DUE'|'SAFE_OVERDUE'|'SOS'
+export type TrackingHealth='HEALTHY'|'DELAYED'|'LOST'|'PERMISSION_OFF'|'LOCATION_OFF'|'OFFLINE_QUEUED'
+export type SosStatus='NONE'|'RAISED'|'ACKNOWLEDGED'|'RESOLVED'
+export type QueueKind='GPS'|'CHECK_IN'|'MEDIA'|'SOS'|'EVENT'
+export type SyncState='QUEUED'|'SYNCING'|'SYNCED'|'FAILED'
+export interface Position{latitude:number;longitude:number;accuracy:number;capturedAt:string;battery?:number}
+export interface ActivityEvent{id:string;eventType:string;actorId:string;missionId?:string;timestamp:string;latitude?:number;longitude?:number;metadata:Record<string,unknown>}
+export interface QueueRecord{id:string;kind:QueueKind;capturedAt:string;uploadedAt?:string;syncState:SyncState;attempts:number;payload:Record<string,unknown>;lastError?:string}
+export interface Mission{id:string;incidentId:string;incidentName:string;team:string;leader:string;members:string[];area:string;task:string;meetingPoint:string;safeRoute:string;contacts:string[];vehicle?:string;startsAt:string}
+export interface AppState{operational:OperationalState;safety:SafetyState;sos:SosStatus;safeConfirmedAt:string;lastPosition?:Position;trackingPermission:'GRANTED'|'DENIED'|'PROMPT';locationEnabled:boolean;online:boolean;battery?:number;events:ActivityEvent[];queue:QueueRecord[]}
