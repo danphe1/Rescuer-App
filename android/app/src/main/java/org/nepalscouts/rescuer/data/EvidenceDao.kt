@@ -10,6 +10,9 @@ interface EvidenceDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(item: EvidenceItem)
 
+    @Query("SELECT * FROM evidence_items WHERE state = 'pending_upload' ORDER BY capturedAt ASC LIMIT :limit")
+    suspend fun pending(limit: Int): List<EvidenceItem>
+
     @Query("SELECT * FROM evidence_items ORDER BY capturedAt DESC LIMIT :limit")
     suspend fun recent(limit: Int): List<EvidenceItem>
 
@@ -18,4 +21,7 @@ interface EvidenceDao {
 
     @Query("UPDATE evidence_items SET state = 'uploaded', uploadedAt = :uploadedAt WHERE id = :id")
     suspend fun markUploaded(id: String, uploadedAt: Long)
+
+    @Query("UPDATE evidence_items SET state = 'failed' WHERE id = :id")
+    suspend fun markFailed(id: String)
 }
