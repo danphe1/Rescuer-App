@@ -15,6 +15,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Rescuer">
 
+        <activity android:name=".OfflineSyncActivity" android:exported="false" />
+        <activity android:name=".MapActivity" android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
