@@ -12,10 +12,18 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.time.Instant
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
 class LocationSyncWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
+    private fun isoUtc(epochMillis: Long): String =
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }.format(Date(epochMillis))
+
     override suspend fun doWork(): Result {
         val session = SecureSessionStore(applicationContext)
         val token = session.deviceToken() ?: return Result.failure()
@@ -32,7 +40,7 @@ class LocationSyncWorker(appContext: Context, params: WorkerParameters) : Corout
                 .put("longitude", p.longitude)
                 .put("accuracy", p.accuracy)
                 .put("battery", p.battery)
-                .put("recorded_at", Instant.ofEpochMilli(p.capturedAt).toString())
+                .put("recorded_at", isoUtc(p.capturedAt))
                 .put("offline", true)
                 .put("client_event_id", p.id))
         }
