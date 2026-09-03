@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import org.nepalscouts.rescuer.network.RescueApi
 import org.nepalscouts.rescuer.network.RescueStatus
+import org.nepalscouts.rescuer.ptt.PttAudioService
 import org.nepalscouts.rescuer.security.SecureSessionStore
 import org.nepalscouts.rescuer.sync.OfflineActionQueue
 import org.nepalscouts.rescuer.tracking.TrackingController
@@ -60,7 +61,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showLogin(message: String? = null) {
-        current = null; root.removeAllViews(); title("Nepal Scouts Rescuer")
+        current = null; root.removeAllViews(); title("RescueGrid Responder")
         text("Native field app · Android 6+ · Low Data ready", 14f)
         if (!message.isNullOrBlank()) text(message, 14f, Color.rgb(180, 35, 35))
         val phone = EditText(this).apply { hint = "Phone number"; inputType = android.text.InputType.TYPE_CLASS_PHONE }
@@ -79,7 +80,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun restoreSession(token: String) {
-        root.removeAllViews(); title("Nepal Scouts Rescuer"); text("Restoring secure device session…", 15f)
+        root.removeAllViews(); title("RescueGrid Responder"); text("Restoring secure device session…", 15f)
         lifecycleScope.launch { runCatching { api.status(token) }.onSuccess { applyStatus(it); startStatusPolling() }.onFailure { session.clear(); showLogin("Session expired. Please log in again.") } }
     }
 
@@ -91,7 +92,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderHome() {
         val s = current ?: return
-        root.removeAllViews(); title("Nepal Scouts Rescuer"); text(s.rescuerName, 20f)
+        root.removeAllViews(); title("RescueGrid Responder"); text(s.rescuerName, 20f)
         text(listOfNotNull(s.teamName, s.incidentName).joinToString(" · ").ifBlank { "No active assignment" }, 14f)
         statusCard("OPERATIONAL", s.operationalStatus.replace('_', ' ').uppercase(), Color.rgb(18, 89, 160))
         val safetyColor = if (s.sosStatus == "raised" || s.safetyStatus == "sos") Color.rgb(190, 32, 38) else Color.rgb(5, 110, 68)
@@ -113,6 +114,12 @@ class MainActivity : AppCompatActivity() {
         primaryButton(actions, "MAP", Color.rgb(18, 89, 160), true) { startActivity(Intent(this, MapActivity::class.java)) }
         primaryButton(actions, "CHECK IN", Color.rgb(18, 89, 160), true) { showCheckIn() }
         primaryButton(actions, "MESSAGE", Color.rgb(18, 89, 160), true) { showMessage() }
+        primaryButton(actions, "PUSH-TO-TALK · TEAM / COMMAND", Color.rgb(6, 59, 120), true) {
+            startActivity(
+                Intent(this, PttActivity::class.java)
+                    .putExtra(PttAudioService.EXTRA_TEAM, s.teamName.orEmpty())
+            )
+        }
         sosHoldButton(actions)
 
         button("COMMAND INBOX", if (s.messages.isNotEmpty()) Color.rgb(190, 32, 38) else Color.rgb(18, 89, 160)) { startActivity(Intent(this, CommandInboxActivity::class.java)) }
