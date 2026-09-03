@@ -4,17 +4,22 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".RescuerApplication"
         android:allowBackup="false"
-        android:label="Nepal Scouts Rescuer"
+        android:label="RescueGrid Responder"
         android:supportsRtl="true"
         android:theme="@style/Theme.Rescuer">
 
+        <activity android:name=".PttActivity" android:exported="false" />
         <activity android:name=".CommandInboxActivity" android:exported="false" />
         <activity android:name=".EvidenceActivity" android:exported="false" />
         <activity android:name=".ActivityTimelineActivity" android:exported="false" />
@@ -44,6 +49,11 @@
             android:name=".tracking.RescueLocationService"
             android:exported="false"
             android:foregroundServiceType="location"
+            android:stopWithTask="false" />
+        <service
+            android:name=".ptt.PttAudioService"
+            android:exported="false"
+            android:foregroundServiceType="microphone|mediaPlayback"
             android:stopWithTask="false" />
     </application>
 </manifest>
