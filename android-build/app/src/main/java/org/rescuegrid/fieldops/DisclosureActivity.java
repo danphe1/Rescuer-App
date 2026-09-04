@@ -6,7 +6,6 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
-import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -15,16 +14,9 @@ import android.widget.TextView;
 import com.google.androidbrowserhelper.trusted.LauncherActivity;
 
 public class DisclosureActivity extends Activity {
-    private static final String PREFS = "rescuegrid_policy";
-    private static final String KEY_ACCEPTED = "sensitive_data_disclosure_accepted_v1";
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_ACCEPTED, false)) {
-            openResponder();
-            return;
-        }
         showDisclosure();
     }
 
@@ -39,6 +31,14 @@ public class DisclosureActivity extends Activity {
         v.setTextColor(color);
         v.setLineSpacing(0f, 1.15f);
         return v;
+    }
+
+    private Button linkButton(String label, String url) {
+        Button b = new Button(this);
+        b.setText(label);
+        b.setAllCaps(false);
+        b.setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))));
+        return b;
     }
 
     private void showDisclosure() {
@@ -63,6 +63,7 @@ public class DisclosureActivity extends Activity {
             "RescueGrid uses precise location while you use the responder app to show your operational position to authorized command personnel, record mission check-ins, and attach location to safety or SOS events.\n\n" +
             "If connectivity is lost, supported GPS points may be stored on your device and synchronized when the connection returns. Location is not collected for advertising. This Android release does not request background-location permission.\n\n" +
             "Camera access is used only when you choose to capture or upload a profile or mission image.\n\n" +
+            "If you enable them, notifications may be used for mission or responder-safety reminders.\n\n" +
             "Your operational information may be visible to authorized personnel in your participating organization for mission coordination and responder safety.\n\n" +
             "You can decline by exiting the app. If you continue, Android or the web app may separately ask for the permissions needed by a feature.",
             16,
@@ -70,26 +71,22 @@ public class DisclosureActivity extends Activity {
         );
         root.addView(body);
 
-        Button privacy = new Button(this);
-        privacy.setText("View Privacy Policy");
-        privacy.setAllCaps(false);
-        privacy.setOnClickListener(v -> {
-            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.privacy_url)));
-            startActivity(i);
-        });
-        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        bp.setMargins(0, dp(26), 0, dp(10));
-        root.addView(privacy, bp);
+        Button privacy = linkButton("View Privacy Policy", getString(R.string.privacy_url));
+        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        pp.setMargins(0, dp(26), 0, dp(8));
+        root.addView(privacy, pp);
+
+        Button deletion = linkButton("Delete Account / Data", getString(R.string.account_deletion_url));
+        LinearLayout.LayoutParams dpv = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        dpv.setMargins(0, 0, 0, dp(12));
+        root.addView(deletion, dpv);
 
         Button accept = new Button(this);
         accept.setText("Continue to RescueGrid");
         accept.setAllCaps(false);
         accept.setTextColor(Color.WHITE);
         accept.setBackgroundColor(Color.rgb(8, 120, 209));
-        accept.setOnClickListener(v -> {
-            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_ACCEPTED, true).apply();
-            openResponder();
-        });
+        accept.setOnClickListener(v -> openResponder());
         root.addView(accept, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(56)));
 
         Button exit = new Button(this);
