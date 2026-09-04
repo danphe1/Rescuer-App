@@ -2,8 +2,8 @@
 <resources>
     <string name="app_name">RescueGrid Responder</string>
     <string name="launch_url">https://ais-dev-xt2c5adrw4dkqjmbkmp7sp-342131114387.asia-southeast1.run.app/</string>
-    <string name="privacy_url">https://rescuegrid-policy-rameshs-projects-3a497c08.vercel.app/privacy.html</string>
-    <string name="account_deletion_url">https://rescuegrid-policy-rameshs-projects-3a497c08.vercel.app/delete-account.html</string>
+    <string name="privacy_url">https://rescuegrid-rameshs-projects-3a497c08.vercel.app/privacy.html</string>
+    <string name="account_deletion_url">https://rescuegrid-rameshs-projects-3a497c08.vercel.app/delete-account.html</string>
     <string name="provider_authority">org.rescuegrid.fieldops.fileprovider</string>
     <string name="asset_statements">[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"web","site":"https://ais-dev-xt2c5adrw4dkqjmbkmp7sp-342131114387.asia-southeast1.run.app/"}}]</string>
 </resources>
