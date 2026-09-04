@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RescueGrid Responder</string>
+    <string name="launch_url">https://ais-dev-xt2c5adrw4dkqjmbkmp7sp-342131114387.asia-southeast1.run.app/</string>
+    <string name="provider_authority">org.rescuegrid.fieldops.fileprovider</string>
+    <string name="asset_statements">[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"web","site":"https://ais-dev-xt2c5adrw4dkqjmbkmp7sp-342131114387.asia-southeast1.run.app/"}}]</string>
+</resources>
