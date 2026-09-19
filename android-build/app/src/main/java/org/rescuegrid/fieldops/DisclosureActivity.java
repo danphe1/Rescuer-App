@@ -106,7 +106,10 @@ public class DisclosureActivity extends Activity {
     }
 
     private void openResponder() {
-        Intent intent = new Intent(this, LauncherActivity.class);
+        Uri responderUrl = Uri.parse(getString(R.string.launch_url));
+        Intent intent = new Intent(Intent.ACTION_VIEW, responderUrl);
+        intent.setClass(this, LauncherActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
         finish();
     }
