@@ -2,7 +2,10 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+    id("com.google.dagger.hilt.android")
 }
+
+hilt { enableAggregatingTask = true }
 
 android {
     namespace = "org.nepalscouts.rescuer"
@@ -16,12 +19,16 @@ android {
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "TRACKER_API_URL", "\"https://fkxbohbrfotbwmqalzyw.supabase.co/functions/v1/rescue-tracker-api\"")
+        buildConfigField("String", "PTT_COMMAND_CHANNEL", "\"RescueGrid Command\"")
     }
 
     buildFeatures { buildConfig = true; viewBinding = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
-    packaging { resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1") }
+    packaging {
+        resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
+        jniLibs.useLegacyPackaging = true
+    }
 }
 
 dependencies {
@@ -37,4 +44,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+
+    implementation("com.zello:sdk:3.0.0")
+    implementation("com.google.dagger:hilt-android:2.59.2")
+    ksp("com.google.dagger:hilt-android-compiler:2.59.2")
 }
